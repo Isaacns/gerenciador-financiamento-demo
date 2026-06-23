@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gerenciador de Financiamento · VIZIO</title>
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="apple-touch-icon" href="favicon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="dados.js"></script>
+<style>
+:root{
+  --blue:#1C64F0; --blue-h:#3C94FC; --blue-d:#1450C8; --sky:#5AA0FF; --blue-soft:#E7EFFE;
+  --ink:#0E1726; --graphite:#10141F; --graphite2:#1A2030; --graphite3:#27304A;
+  --bg:#F3F5F9; --surface:#fff; --text:#161B26; --muted:#667085; --muted2:#98A2B3;
+  --border:#E4E8EF; --border2:#EEF1F6; --row:#F7F9FC;
+  --success:#16A34A; --success-bg:#E7F6ED; --warn:#D97706; --warn-bg:#FBF1DC;
+  --danger:#DC2626; --danger-bg:#FBEAEA; --info:#2563EB; --info-bg:#E8F0FE;
+  --radius:12px; --radius-sm:8px; --shadow:0 1px 3px rgba(14,23,38,.06),0 1px 2px rgba(14,23,38,.04);
+  --shadow-lg:0 14px 36px rgba(14,23,38,.14);
+  --font:'Inter','Segoe UI',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+button{font-family:inherit;cursor:pointer}
+.hidden{display:none!important}
+/* ===== LOGIN ===== */
+#login{position:fixed;inset:0;background:radial-gradient(120% 120% at 72% 8%,#1A2030 0%,#0B0E16 62%);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px}
+.login-card{width:100%;max-width:392px;background:var(--surface);border-radius:18px;padding:34px 30px;box-shadow:var(--shadow-lg);text-align:center}
+.login-card .lg{display:flex;align-items:center;justify-content:center;gap:9px;margin-bottom:6px}
+.login-card .lg img.sym{height:40px} .login-card .lg img.wm{height:26px}
+.login-card h1{font-size:1.12rem;font-weight:800;margin-top:8px}
+.login-card .sb{font-size:.82rem;color:var(--muted);margin:3px 0 22px}
+.field{text-align:left;margin-bottom:14px}
+.field label{display:block;font-size:.74rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:5px}
+.field input{width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-size:.95rem}
+.field input:focus{outline:none;border-color:var(--blue)}
+.btn-primary{width:100%;background:var(--blue);color:#fff;border:0;padding:12px;border-radius:var(--radius-sm);font-weight:700;font-size:.95rem}
+.btn-primary:hover{background:var(--blue-h)}
+.login-err{color:var(--danger);font-size:.82rem;margin-bottom:12px;min-height:1em}
+.login-hint{margin-top:18px;font-size:.74rem;color:var(--muted2);line-height:1.6;border-top:1px solid var(--border2);padding-top:14px}
+.login-hint b{color:var(--muted)}
+.login-tag{margin-top:14px;font-size:.7rem;color:var(--muted2);letter-spacing:.02em}
+/* ===== SHELL ===== */
+#app{display:flex;min-height:100vh}
+.side{width:248px;background:var(--graphite);color:#C2C9D6;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;flex:none}
+.side .logo{display:flex;align-items:center;gap:10px;padding:20px 18px 8px}
+.side .logo img.sym{height:30px} .side .logo img.wm{height:21px;opacity:.95}
+.side .prop{padding:2px 18px 16px;font-size:.7rem;color:var(--sky);font-weight:600;letter-spacing:.02em;border-bottom:1px solid var(--graphite2)}
+.nav{flex:1;overflow-y:auto;padding:10px 10px}
+.nav .grp{font-size:.66rem;text-transform:uppercase;letter-spacing:.08em;padding:14px 10px 6px;font-weight:600;color:#667085}
+.nav a{display:flex;align-items:center;gap:11px;padding:9px 11px;border-radius:8px;color:#C2C9D6;text-decoration:none;font-size:.88rem;font-weight:500;margin-bottom:2px}
+.nav a svg{width:18px;height:18px;flex:none;opacity:.85}
+.nav a:hover{background:var(--graphite2);color:#fff}
+.nav a.active{background:var(--blue);color:#fff}
+.nav a.active svg{opacity:1}
+.side .foot{padding:14px 16px;border-top:1px solid var(--graphite2);font-size:.7rem;color:#5C6680;display:flex;align-items:center;gap:7px}
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:13px 26px;display:flex;align-items:center;justify-content:space-between;gap:16px;position:sticky;top:0;z-index:20}
+.topbar .crumb{font-size:1.05rem;font-weight:700}
+.topbar .crumb small{display:block;font-size:.74rem;color:var(--muted);font-weight:500}
+.user{display:flex;align-items:center;gap:12px}
+.user .who{text-align:right;font-size:.8rem}
+.user .who b{display:block;font-weight:600}
+.user .who span{color:var(--muted);font-size:.72rem}
+.user .av{width:38px;height:38px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem}
+.user button.out{background:none;border:1px solid var(--border);border-radius:8px;padding:8px 9px;color:var(--muted);display:flex}
+.user button.out:hover{border-color:var(--danger);color:var(--danger)}
+.user button.out svg{width:17px;height:17px}
+.content{padding:26px;max-width:1240px;width:100%;margin:0 auto}
+/* ===== KPIs / cards ===== */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:24px}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--blue)}
+.kpi.green::before{background:var(--success)} .kpi.warnb::before{background:var(--warn)} .kpi.ink::before{background:var(--graphite2)} .kpi.red::before{background:var(--danger)}
+.kpi .lbl{font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+.kpi .val{font-size:1.7rem;font-weight:800;letter-spacing:-.02em;margin-top:5px}
+.kpi .hint{font-size:.76rem;color:var(--muted2);margin-top:3px}
+.kpi .hint.up{color:var(--success)} .kpi .hint.dn{color:var(--danger)}
+.kpi .pbar{height:6px;border-radius:999px;background:var(--row);margin-top:9px;overflow:hidden}
+.kpi .pbar i{display:block;height:100%;border-radius:999px;background:var(--blue)}
+.sec-title{font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700;margin:6px 0 12px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px 22px;box-shadow:var(--shadow);margin-bottom:18px}
+.card h2{font-size:1.05rem;font-weight:700}
+.card .cap{font-size:.82rem;color:var(--muted);margin-bottom:14px}
+.grid2{display:grid;grid-template-columns:1.5fr 1fr;gap:18px}
+@media(max-width:980px){.grid2{grid-template-columns:1fr}.side{width:74px}.side .logo img.wm,.side .prop,.nav .grp,.nav a span.t,.side .foot span{display:none}.nav a{justify-content:center}}
+.chartbox{position:relative;height:300px}.chartbox.tall{height:380px}.chartbox.xtall{position:relative;height:520px}
+.tbl-wrap{overflow-x:auto;max-height:560px;overflow-y:auto}
+table{width:100%;border-collapse:collapse;font-size:.86rem}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--border2);white-space:nowrap}
+th{font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:600;position:sticky;top:0;background:var(--surface);z-index:1}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+tbody tr:hover{background:var(--row)}
+tfoot th{position:sticky;bottom:0;background:var(--surface)}
+.badge{font-size:.7rem;font-weight:600;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.badge.pago{background:var(--success-bg);color:var(--success)}
+.badge.vencer{background:var(--warn-bg);color:var(--warn)}
+.badge.atraso{background:var(--danger-bg);color:var(--danger)}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.toolbar select,.toolbar input{padding:8px 11px;border:1px solid var(--border);border-radius:8px;font-size:.85rem;font-family:inherit}
+.toolbar select:focus,.toolbar input:focus{outline:none;border-color:var(--blue)}
+.toolbar label{font-size:.8rem;color:var(--muted);font-weight:600}
+.chip{font-size:.78rem;padding:7px 13px;border-radius:999px;border:1px solid var(--border);background:var(--surface);color:var(--muted);font-weight:600}
+.chip.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+.statlist .row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px dashed var(--border)}
+.statlist .row:last-child{border:0}
+.statlist .dot{width:11px;height:11px;border-radius:50%;flex:none}
+.statlist .nm{flex:1;font-size:.9rem;font-weight:500}
+.statlist .bar{width:120px;height:7px;background:var(--row);border-radius:999px;overflow:hidden}
+.statlist .bar i{display:block;height:100%;border-radius:999px}
+.statlist .ct{font-weight:700;min-width:90px;text-align:right;font-variant-numeric:tabular-nums}
+.insight{background:var(--blue-soft);border:1px solid #C3D9FC;border-radius:var(--radius);padding:14px 16px;font-size:.86rem;color:#13386F;margin-bottom:18px;display:flex;gap:10px}
+.insight svg{width:20px;height:20px;flex:none;color:var(--blue-d)}
+.sig{margin-top:30px;padding-top:18px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;font-size:.78rem;color:var(--muted2)}
+.sig .by{display:flex;align-items:center;gap:7px}.sig .by b{color:var(--text)}
+.sig .by img.sym{height:17px;vertical-align:-4px;opacity:.85}.sig .by img.wm{height:14px;vertical-align:-1px;opacity:.72}
+/* ===== Simulador ===== */
+.simgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:6px}
+.simf label{display:block;font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:5px}
+.simf input{width:100%;padding:10px 12px;border:1.5px solid var(--blue);border-radius:8px;font-size:.95rem;font-family:inherit;font-variant-numeric:tabular-nums}
+.simf input:focus{outline:none;border-color:var(--blue-d);box-shadow:0 0 0 3px var(--blue-soft)}
+.simres{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:18px 0}
+.simres .rc{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;text-align:center}
+.simres .rc .l{font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:600}
+.simres .rc .v{font-size:1.5rem;font-weight:800;margin-top:6px}
+.simres .rc.eco{background:#062a18;border-color:#0c6b3a}
+.simres .rc.eco .l{color:#7DE3AE}.simres .rc.eco .v{color:#34D399}
+@media(max-width:680px){.simres{grid-template-columns:1fr}}
+/* ===== HOME PREMIUM (escura, VIZIO) ===== */
+body.home{background:#0C0F18}
+body.home .topbar{background:#10141F;border-bottom-color:#1E2536}
+body.home .topbar .crumb{color:#fff}
+body.home .topbar .crumb small{color:#7C86A0}
+body.home .topbar .who b{color:#E8EAEE}
+body.home .topbar .who span{color:#667085}
+body.home .topbar .user button.out{border-color:#283149;color:#8A93A8}
+.home-hero{text-align:center;padding:18px 10px 24px}
+.home-logo{display:flex;align-items:center;justify-content:center;gap:12px;filter:drop-shadow(0 8px 28px rgba(28,100,240,.38))}
+.home-logo img.sym{height:56px}.home-logo img.wm{height:38px}
+.home-title{font-size:1.32rem;font-weight:800;letter-spacing:.02em;margin-top:16px;color:#fff}
+.home-title span{font-weight:300;color:#7C86A0}
+.home-sub{font-size:.84rem;color:#7C86A0;margin-top:3px}
+.home-kpis{display:flex;justify-content:center;flex-wrap:wrap;margin-top:22px}
+.home-kpis .hk{padding:0 26px;border-right:1px solid #232B40}
+.home-kpis .hk:last-child{border-right:0}
+.hk-n{font-size:1.45rem;font-weight:800;color:#fff}
+.hk-l{font-size:.66rem;text-transform:uppercase;letter-spacing:.05em;color:#667085;margin-top:2px}
+.home-insight{display:flex;gap:10px;align-items:flex-start;background:#10243F;border:1px solid #1E4474;border-radius:12px;padding:13px 16px;font-size:.86rem;color:#A8CBF5;margin-bottom:18px}
+.home-insight svg{width:20px;height:20px;color:#5AA0FF;flex:none}
+.home-insight b{color:#8FBEF8}
+.home-sectitle{font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:#667085;font-weight:700;margin-bottom:12px}
+.home-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(132px,1fr));gap:14px}
+.hicon{position:relative;background:#141826;border:1px solid #222a3d;border-radius:16px;padding:22px 10px 16px;text-align:center;cursor:pointer;transition:transform .15s,border-color .15s,background .15s;font-family:inherit}
+.hicon:hover{border-color:var(--blue);background:#171D2E;transform:translateY(-2px);z-index:40}
+.hicon-ic{color:#5AA0FF;display:flex;justify-content:center}
+.hicon-ic svg{width:30px;height:30px}
+.hicon-nm{font-size:.8rem;font-weight:600;color:#D2D8E4;margin-top:10px;line-height:1.25}
+.hpreview{display:none;position:absolute;bottom:calc(100% + 12px);left:50%;transform:translateX(-50%);width:240px;z-index:40;background:#1A2030;border:1px solid #313B54;border-radius:14px;padding:15px 16px;box-shadow:0 14px 36px rgba(0,0,0,.5);text-align:left}
+.hpreview::after{content:"";position:absolute;top:100%;left:50%;transform:translateX(-50%);border:7px solid transparent;border-top-color:#1A2030}
+.hicon:hover .hpreview{display:block}
+.hp-name{font-size:.95rem;font-weight:700;color:#F1F3F6;margin:7px 0 8px}
+.hp-kv{font-size:.8rem;font-weight:600;color:#AEB6C6;margin-top:8px}
+.hp-kv b{color:#5AA0FF}
+.hp-go{font-size:.72rem;color:#5AA0FF;font-weight:600;margin-top:9px}
+.hspark{width:100%;height:32px;display:block}
+.hdot{display:inline-flex;align-items:center;gap:5px;font-size:.6rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.hdot::before{content:"";width:7px;height:7px;border-radius:50%}
+.hdot.a{color:#34D399}.hdot.a::before{background:#34D399}
+.home-foot{text-align:center;padding:24px 0 4px;border-top:1px solid #1E2536;margin-top:24px}
+.home-foot .lg{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:9px}
+.home-foot .lg img.sym{height:30px}.home-foot .lg img.wm{height:24px;opacity:.95}
+.home-foot span{font-size:.72rem;color:#667085}
+</style>
+</head>
+<body>
+
+<div id="login">
+  <form class="login-card" onsubmit="return doLogin(event)">
+    <div class="lg"><img class="sym" src="vizio-symbol-dark.png" alt="VIZIO"><img class="wm" src="vizio-wordmark-dark.png" alt="VIZIO"></div>
+    <h1 id="lgTitle">Gerenciador de Financiamento</h1>
+    <div class="sb" id="lgSub">Meu Apê 203 — Dom Pedro I · acesso restrito</div>
+    <div class="login-err" id="loginErr"></div>
+    <div class="field"><label>Usuário</label><input id="u" autocomplete="username" autofocus></div>
+    <div class="field"><label>Senha</label><input id="p" type="password" autocomplete="current-password"></div>
+    <button class="btn-primary" type="submit">Entrar</button>
+    <div class="login-hint" id="lgHint">Acesso de demonstração:<br><b>sarah</b> / <b>sarah</b> — proprietária<br><b>admin</b> / <b>admin</b> — gestor (Isaac)</div>
+    <div class="login-tag">Sua planilha virou software. · um produto INPERSON</div>
+  </form>
+</div>
+
+<div id="app" class="hidden">
+  <aside class="side">
+    <div class="logo"><img class="sym" src="vizio-symbol-light.png" alt="VIZIO"><img class="wm" src="vizio-wordmark-light.png" alt="VIZIO"></div>
+    <div class="prop" id="sideProp">🏠 Meu Apê 203 — Dom Pedro I</div>
+    <nav class="nav" id="nav"></nav>
+    <div class="foot"><span id="sideFoot">Gerenciador de Financiamento · v1.0</span></div>
+  </aside>
+  <div class="main">
+    <header class="topbar">
+      <div class="crumb" id="crumb">Início<small id="crumbSub"></small></div>
+      <div class="user">
+        <div class="who"><b id="uName"></b><span id="uRole"></span></div>
+        <div class="av" id="uAv"></div>
+        <button class="out" onclick="logout()" title="Sair"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg></button>
+      </div>
+    </header>
+    <main class="content" id="view"></main>
+  </div>
+</div>
+
+<script>
+/* ===== Configuração da INSTÂNCIA (lida do dados.js; fallback p/ a 1ª instância) =====
+   Para criar a instância de um novo comprador, basta gerar um dados.js com
+   DADOS._cfg e DADOS._users (ver o Configurador). Nada mais precisa ser editado. */
+const CFG = (typeof DADOS!=='undefined' && DADOS._cfg) ? DADOS._cfg : {};
+const PRODUTO   = CFG.produto   || 'Gerenciador de Financiamento';
+const INSTANCIA = CFG.instancia || 'Meu Apê 203 — Dom Pedro I';
+const PROP_LABEL= CFG.propLabel || 'Proprietária';
+const AUTH_URL  = CFG.authUrl   || '';
+const USERS = (typeof DADOS!=='undefined' && Array.isArray(DADOS._users) && DADOS._users.length) ? DADOS._users : [
+  {user:'sarah',pass:'sarah',nome:'Sarah Nogueira',perfil:'proprietario'},
+  {user:'admin',pass:'admin',nome:'Isaac Nogueira',perfil:'admin'}
+];
+function applyCfg(){
+  try{
+    document.title = PRODUTO + ' · VIZIO';
+    var t=document.getElementById('lgTitle'); if(t) t.textContent=PRODUTO;
+    var s=document.getElementById('lgSub');   if(s) s.textContent=INSTANCIA+' · acesso restrito';
+    var p=document.getElementById('sideProp');if(p) p.textContent='🏠 '+INSTANCIA;
+    var f=document.getElementById('sideFoot');if(f) f.textContent=PRODUTO+' · v1.0';
+    var h=document.getElementById('lgHint');
+    if(h){
+      if(AUTH_URL){ h.innerHTML='Acesso restrito · entre com seu usuário e senha.'; }
+      else { h.innerHTML='Acesso de demonstração:<br>'+USERS.map(function(u){return '<b>'+u.user+'</b> / <b>'+(u.pass||'•••')+'</b> — '+(u.perfil==='admin'?'gestor':(u.roleLabel||PROP_LABEL.toLowerCase()));}).join('<br>'); }
+    }
+  }catch(e){}
+}
+applyCfg();
+let SESSION=null;
+try{const s=sessionStorage.getItem('vizio_fin_sess');if(s)SESSION=JSON.parse(s);}catch(e){}
+/* ===== Autenticação =====
+   AUTH_URL (em DADOS._cfg.authUrl) = URL /exec do Apps Script com auth.
+   Se preenchida: o login é validado NO SERVIDOR (senhas ficam hasheadas no
+   Sheets, fora do JS público) via SHA-256 + JSONP. Se vazia: modo demonstração
+   usando DADOS._users (front-end). AUTH_URL já está definido no bloco de config acima. */
+async function sha256hex(s){
+  try{ const b=new TextEncoder().encode(s);
+    const d=await crypto.subtle.digest('SHA-256',b);
+    return Array.from(new Uint8Array(d)).map(x=>x.toString(16).padStart(2,'0')).join(''); }
+  catch(e){ return null; }
+}
+function jsonp(url,cb){
+  return new Promise((res,rej)=>{
+    const s=document.createElement('script');
+    const t=setTimeout(()=>{cleanup();rej(new Error('timeout'));},12000);
+    function cleanup(){clearTimeout(t);try{delete window[cb];}catch(e){}s.remove();}
+    window[cb]=d=>{cleanup();res(d);};
+    s.onerror=()=>{cleanup();rej(new Error('net'));};
+    s.src=url+(url.indexOf('?')>=0?'&':'?')+'callback='+cb;
+    document.body.appendChild(s);
+  });
+}
+function setSession(s){
+  SESSION=s;
+  try{sessionStorage.setItem('vizio_fin_sess',JSON.stringify(SESSION));}catch(e){}
+  startApp();
+}
+function doLogin(e){
+  e.preventDefault();
+  const u=document.getElementById('u').value.trim().toLowerCase();
+  const p=document.getElementById('p').value;
+  const err=document.getElementById('loginErr');
+  if(!AUTH_URL){ // modo demonstração (front-end)
+    const f=USERS.find(x=>x.user===u&&x.pass===p);
+    if(!f){err.textContent='Usuário ou senha inválidos.';return false;}
+    setSession({nome:f.nome,perfil:f.perfil,user:f.user,roleLabel:f.roleLabel});
+    return false;
+  }
+  err.textContent='Verificando…';
+  (async()=>{
+    try{
+      const h=await sha256hex(p);
+      if(!h){err.textContent='Navegador sem suporte a criptografia (use HTTPS).';return;}
+      const r=await jsonp(AUTH_URL+'?action=login&u='+encodeURIComponent(u)+'&h='+h,'__vzAuth'+Date.now());
+      if(r&&r.ok){setSession({nome:r.nome,perfil:r.perfil,user:u,roleLabel:r.roleLabel});}
+      else{err.textContent='Usuário ou senha inválidos.';}
+    }catch(ex){err.textContent='Falha ao conectar ao servidor de login.';}
+  })();
+  return false;
+}
+function logout(){SESSION=null;try{sessionStorage.removeItem('vizio_fin_sess');}catch(e){}location.reload();}
+
+const IC={
+  home:'<path d="M3 11l9-8 9 8M5 10v10h14V10"/>',
+  visao:'<path d="M3 3v18h18M7 13l3-3 3 2 5-6"/>',
+  entrada:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/>',
+  doc:'<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h6"/>',
+  obra:'<path d="M3 21h18M5 21V10l5-3 5 3v11M9 21v-5h2v5"/><path d="M14 13h3v8"/>',
+  financiamento:'<path d="M3 10l9-6 9 6M5 9v11h14V9M9 20v-6h6v6"/>',
+  simulador:'<rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h2M14 11h2M8 15h2M14 15h2"/>'
+};
+function svg(name){return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${IC[name]||IC.home}</svg>`;}
+
+const MODS=[
+  {id:'home',nome:'Início',grp:'',roles:['admin','proprietario'],ready:true},
+  {id:'visao',nome:'Visão Geral',sub:'Resumo do imóvel',grp:'Painel',roles:['admin','proprietario'],ready:true,desc:'Custo total, já investido e quanto falta pagar.'},
+  {id:'entrada',nome:'Entrada Parcelada',sub:'Sinal + parcelas',grp:'Etapas de pagamento',roles:['admin','proprietario'],ready:true,desc:'Parcelas da entrada, reajuste e status.'},
+  {id:'doc',nome:'Documentação',sub:'RTBI + Cartório',grp:'Etapas de pagamento',roles:['admin','proprietario'],ready:true,desc:'Custos de registro e cartório.'},
+  {id:'obra',nome:'Juros de Obra',sub:'Evolução da obra',grp:'Etapas de pagamento',roles:['admin','proprietario'],ready:true,desc:'Juros de obra e avanço da construção.'},
+  {id:'financiamento',nome:'Financiamento',sub:'SAC · 420 parcelas',grp:'Etapas de pagamento',roles:['admin','proprietario'],ready:true,desc:'Saldo devedor e amortização do banco.'},
+  {id:'simulador',nome:'Simulador',sub:'Amortização antecipada',grp:'Ferramentas',roles:['admin','proprietario'],ready:true,desc:'Simule aportes e veja a economia de juros.'}
+];
+const fmtBRL=n=>'R$ '+(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtBRL2=n=>'R$ '+(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtN=n=>Math.round(n||0).toLocaleString('pt-BR');
+const fmtPct=n=>(n*100).toFixed(1).replace('.',',')+'%';
+const dBR=s=>{if(!s||s==='—')return '—';const p=String(s).split('-');return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:s;};
+function can(m){return m.roles.includes(SESSION.perfil);}
+
+/* ---- agregações derivadas dos arrays ---- */
+function aggEntrada(){const d=DADOS.entrada;let pago=0,vencer=0,prev=0,nPagos=0,nVencer=0;
+  d.forEach(e=>{const v=e.valor||0;prev+=v;if(e.quitado){pago+=(e.pago||e.total||v);nPagos++;}else{vencer+=v;nVencer++;}});
+  return {pago,vencer,prev,nPagos,nVencer,n:d.length,pct:pago/(pago+vencer||1)};}
+function aggDoc(){const d=DADOS.doc;let pago=0,vencer=0,nPagos=0,nVencer=0;
+  d.forEach(e=>{const v=e.total||0;if(e.quitado){pago+=v;nPagos++;}else{vencer+=v;nVencer++;}});
+  return {pago,vencer,nPagos,nVencer,n:d.length,pct:pago/(pago+vencer||1)};}
+function aggObra(){const d=DADOS.juros;let pago=0,vencer=0,nPagos=0,nVencer=0;
+  d.forEach(e=>{const v=e.total||e.valor||0;if(e.quitado){pago+=v;nPagos++;}else{vencer+=v;nVencer++;}});
+  const ult=[...d].reverse().find(e=>e.evolucao!=null);
+  return {pago,vencer,nPagos,nVencer,n:d.length,pct:pago/(pago+vencer||1),evolucao:ult?ult.evolucao:0};}
+
+function startApp(){
+  document.getElementById('login').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  document.getElementById('uName').textContent=SESSION.nome;
+  document.getElementById('uRole').textContent=SESSION.perfil==='admin'?'Gestor (INPERSON)':(SESSION.roleLabel||PROP_LABEL);
+  document.getElementById('uAv').textContent=SESSION.nome.split(' ').map(x=>x[0]).slice(0,2).join('');
+  buildNav();navigate('home');
+}
+function buildNav(){
+  const nav=document.getElementById('nav');let html='';let lastGrp=null;
+  MODS.filter(can).forEach(m=>{
+    if(m.grp!==lastGrp&&m.grp){html+=`<div class="grp">${m.grp}</div>`;lastGrp=m.grp;}
+    html+=`<a href="javascript:void(0)" data-id="${m.id}" onclick="navigate('${m.id}')">${svg(m.id)}<span class="t">${m.nome}</span></a>`;
+  });
+  nav.innerHTML=html;
+}
+let CUR='home';
+function navigate(id){
+  CUR=id;const m=MODS.find(x=>x.id===id);if(!m||!can(m))return;
+  document.body.classList.toggle('home',id==='home');
+  document.querySelectorAll('#nav a').forEach(a=>a.classList.toggle('active',a.dataset.id===id));
+  document.getElementById('crumb').childNodes[0].nodeValue=m.nome;
+  document.getElementById('crumbSub').textContent=m.sub||'';
+  const v=document.getElementById('view');
+  ({home:renderHome,visao:renderVisao,entrada:renderEntrada,doc:renderDoc,obra:renderObra,financiamento:renderFin,simulador:renderSim}[id]||renderHome)(v);
+  window.scrollTo(0,0);
+}
+function sig(){return `<div class="sig"><div class="by"><b>Gerenciador de Financiamento</b> <span>by</span> <img class="sym" src="vizio-symbol-dark.png"> <img class="wm" src="vizio-wordmark-dark.png"> · Sua planilha virou software.</div><span>Dados: ${DADOS._meta.fonte} · ${DADOS._meta.gerado}</span></div>`;}
+
+function spark(data,type,color){
+  data=data.filter(x=>typeof x==='number');if(!data.length)data=[0];
+  const w=200,h=32,mx=Math.max.apply(null,data.concat([1])),mn=Math.min.apply(null,data);
+  let inner='';color=color||'#5AA0FF';
+  if(type==='bar'){const bw=w/data.length;data.forEach((vv,i)=>{const bh=Math.max(2,(vv/mx)*(h-3));inner+=`<rect x="${(i*bw+1).toFixed(1)}" y="${(h-bh).toFixed(1)}" width="${Math.max(1,bw-2.5).toFixed(1)}" height="${bh.toFixed(1)}" rx="1.4" fill="${color}" opacity="${(0.42+0.58*vv/mx).toFixed(2)}"/>`;});}
+  else{const pts=data.map((vv,i)=>`${(i/((data.length-1)||1)*w).toFixed(1)},${(h-2-((vv-mn)/((mx-mn)||1))*(h-5)).toFixed(1)}`);inner=`<polyline points="${pts.join(' ')}" fill="none" stroke="${color}" stroke-width="2"/>`;}
+  return `<svg class="hspark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">${inner}</svg>`;
+}
+function kvOf(id){const r=DADOS.resumo;
+  if(id==='visao')return `Custo total <b>${fmtBRL(r.custoTotal)}</b>`;
+  if(id==='entrada'){const a=aggEntrada();return `<b>${fmtBRL(a.pago)}</b> pagos · ${fmtPct(a.pct)}`;}
+  if(id==='doc'){const a=aggDoc();return `<b>${fmtBRL(a.pago)}</b> pagos · ${fmtPct(a.pct)}`;}
+  if(id==='obra'){const a=aggObra();return `obra <b>${fmtPct(a.evolucao)}</b> · ${fmtPct(a.pct)} pago`;}
+  if(id==='financiamento')return `Saldo <b>${fmtBRL(DADOS.finMeta.saldoAtual)}</b> · 420x`;
+  if(id==='simulador')return `Economize até <b>${fmtBRL(DADOS.sim.jurosBase-DADOS.sim.jurosSim)}</b>`;
+  return '';
+}
+function renderHome(v){
+  const r=DADOS.resumo,fm=DADOS.finMeta;
+  const pctGeral=r.custoTotal?r.totalInvestido/r.custoTotal:0;
+  const SP={
+    visao:[DADOS.desembolso.map(x=>x.acum),'line'],
+    entrada:[DADOS.entrada.map(e=>e.valor||0),'bar'],
+    doc:[DADOS.doc.map(e=>e.total||0),'bar'],
+    obra:[DADOS.juros.map(e=>e.valor||0),'bar'],
+    financiamento:[DADOS.fin.filter((_,i)=>i%24===0).map(e=>e.saldo||0),'line'],
+    simulador:[[DADOS.sim.mesesBase,DADOS.sim.mesesSim],'bar']
+  };
+  let cards='';
+  MODS.filter(m=>m.id!=='home'&&can(m)).forEach(m=>{
+    const sp=SP[m.id]||[[1],'bar'];
+    cards+=`<button class="hicon" onclick="navigate('${m.id}')"><div class="hicon-ic">${svg(m.id)}</div><div class="hicon-nm">${m.nome}</div><div class="hpreview"><span class="hdot a">Ativo</span><div class="hp-name">${m.nome}</div>${spark(sp[0],sp[1])}<div class="hp-kv">${kvOf(m.id)}</div><div class="hp-go">Abrir módulo →</div></div></button>`;
+  });
+  const prox=DADOS.entrada.find(e=>!e.quitado);
+  v.innerHTML=`
+    <div class="home-hero">
+      <div class="home-logo"><img class="sym" src="vizio-symbol-light.png"><img class="wm" src="vizio-wordmark-light.png"></div>
+      <div class="home-title">GERENCIADOR DE <span>FINANCIAMENTO</span></div>
+      <div class="home-sub">${INSTANCIA} · Sua planilha virou software.</div>
+      <div class="home-kpis">
+        <div class="hk"><div class="hk-n">${fmtBRL(r.totalInvestido)}</div><div class="hk-l">Já investido</div></div>
+        <div class="hk"><div class="hk-n">${fmtBRL(r.custoTotal)}</div><div class="hk-l">Custo total</div></div>
+        <div class="hk"><div class="hk-n">${fmtBRL(r.faltaPagar)}</div><div class="hk-l">Falta pagar</div></div>
+        <div class="hk"><div class="hk-n">${fmtPct(pctGeral)}</div><div class="hk-l">Concluído</div></div>
+      </div>
+    </div>
+    <div class="home-insight">${svg('financiamento')}<div><b>Situação:</b> você já quitou ${fmtPct(pctGeral)} do imóvel (${fmtBRL(r.totalInvestido)} de ${fmtBRL(r.custoTotal)}). O grande bloco restante é o <b>financiamento de ${fmtBRL(fm.saldoInicial)}</b> em 420 parcelas — use o <b>Simulador</b> para ver quanto um aporte mensal economiza de juros.</div></div>
+    <div class="home-sectitle">Etapas e ferramentas</div>
+    <div class="home-grid">${cards}</div>
+    <div class="home-foot"><div class="lg"><img class="sym" src="vizio-symbol-light.png"><img class="wm" src="vizio-wordmark-light.png"></div><span>Sua planilha virou software. · um produto INPERSON</span></div>`;
+}
+
+let chD,chE,chDoc,chO,chF,chS;
+/* ---------- VISÃO GERAL ---------- */
+function renderVisao(v){
+  const r=DADOS.resumo,e=aggEntrada(),dc=aggDoc(),ob=aggObra(),fm=DADOS.finMeta;
+  const pctGeral=r.custoTotal?r.totalInvestido/r.custoTotal:0;
+  const cats=[
+    {nm:'Entrada',pago:e.pago,prev:e.pago+e.vencer,cor:'#1C64F0'},
+    {nm:'Documentação',pago:dc.pago,prev:dc.pago+dc.vencer,cor:'#3C94FC'},
+    {nm:'Juros de Obra',pago:ob.pago,prev:ob.pago+ob.vencer,cor:'#5AA0FF'},
+    {nm:'Financiamento',pago:fm.totalPago,prev:fm.saldoInicial,cor:'#27304A'}
+  ];
+  v.innerHTML=`
+    <div class="kpis">
+      <div class="kpi green"><div class="lbl">Já investido</div><div class="val">${fmtBRL(r.totalInvestido)}</div><div class="hint">capital próprio aplicado</div></div>
+      <div class="kpi ink"><div class="lbl">Custo total do imóvel</div><div class="val">${fmtBRL(r.custoTotal)}</div><div class="hint">entrada + doc + obra + financiamento</div></div>
+      <div class="kpi red"><div class="lbl">Falta pagar</div><div class="val">${fmtBRL(r.faltaPagar)}</div><div class="hint">${fmtPct(1-pctGeral)} do total</div></div>
+      <div class="kpi"><div class="lbl">Concluído</div><div class="val">${fmtPct(pctGeral)}</div><div class="pbar"><i style="width:${(pctGeral*100).toFixed(1)}%"></i></div></div>
+    </div>
+    <div class="grid2">
+      <div class="card"><h2>Desembolso acumulado por ano</h2><div class="cap">Quanto sai do seu bolso ao longo do financiamento (projeção até a quitação).</div><div class="chartbox tall"><canvas id="cVis"></canvas></div></div>
+      <div class="card"><h2>Pago × a pagar por etapa</h2><div class="cap">Progresso de cada bloco de custo</div>
+        <div class="statlist">${cats.map(c=>{const pc=c.pago/(c.prev||1);return `<div class="row"><span class="dot" style="background:${c.cor}"></span><span class="nm">${c.nm}<div style="font-size:.74rem;color:var(--muted)">${fmtBRL(c.pago)} de ${fmtBRL(c.prev)}</div></span><span class="bar"><i style="width:${(pc*100).toFixed(0)}%;background:${c.cor}"></i></span><span class="ct">${fmtPct(pc)}</span></div>`;}).join('')}</div></div>
+    </div>
+    <div class="card"><h2>Próximos vencimentos</h2><div class="cap">Primeira parcela em aberto de cada etapa</div>
+      <div class="tbl-wrap"><table><thead><tr><th>Etapa</th><th>Parcela</th><th>Vencimento</th><th class="num">Valor</th></tr></thead><tbody>${proxRows()}</tbody></table></div></div>${sig()}`;
+  const ds=DADOS.desembolso;
+  if(chD)chD.destroy();
+  chD=new Chart(document.getElementById('cVis'),{type:'line',data:{labels:ds.map(x=>x.ano),datasets:[{label:'Desembolso acumulado',data:ds.map(x=>x.acum),borderColor:'#1C64F0',backgroundColor:'rgba(28,100,240,.12)',fill:true,tension:.3,pointRadius:0,borderWidth:2.5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+fmtBRL(c.parsed.y)}}},scales:{y:{ticks:{callback:x=>'R$ '+(x/1000)+'k',font:{family:'Inter'}},grid:{color:'#EEF1F6'}},x:{grid:{display:false},ticks:{maxTicksLimit:12,font:{family:'Inter'}}}}}});
+}
+function proxRows(){
+  const etapas=[
+    {nm:'Entrada',arr:DADOS.entrada,k:'venc'},{nm:'Documentação',arr:DADOS.doc,k:null},
+    {nm:'Juros de Obra',arr:DADOS.juros,k:'venc'},{nm:'Financiamento',arr:DADOS.fin,k:'mes'}
+  ];
+  return etapas.map(et=>{const p=et.arr.find(x=>!x.quitado);if(!p)return '';
+    const venc=et.k?p[et.k]:'—';const val=p.valor||p.total||0;
+    return `<tr><td><b>${et.nm}</b></td><td>${p.parcela||'—'}</td><td>${dBR(venc)}</td><td class="num">${fmtBRL2(val)}</td></tr>`;}).join('');
+}
+/* ---------- ENTRADA ---------- */
+function renderEntrada(v){
+  const a=aggEntrada(),d=DADOS.entrada;
+  v.innerHTML=`
+    <div class="kpis">
+      <div class="kpi green"><div class="lbl">Total pago</div><div class="val">${fmtBRL(a.pago)}</div><div class="hint">${a.nPagos} parcelas quitadas</div></div>
+      <div class="kpi warnb"><div class="lbl">A vencer</div><div class="val">${fmtBRL(a.vencer)}</div><div class="hint">${a.nVencer} parcelas restantes</div></div>
+      <div class="kpi ink"><div class="lbl">Total previsto</div><div class="val">${fmtBRL(a.pago+a.vencer)}</div><div class="hint">entrada completa</div></div>
+      <div class="kpi"><div class="lbl">Concluído</div><div class="val">${fmtPct(a.pct)}</div><div class="pbar"><i style="width:${(a.pct*100).toFixed(1)}%"></i></div></div>
+    </div>
+    <div class="card"><h2>Parcelas da entrada</h2><div class="cap">Valor previsto (barra) e valor efetivamente pago com reajuste (linha).</div><div class="chartbox tall"><canvas id="cEnt"></canvas></div></div>
+    <div class="card"><h2>Detalhe das parcelas</h2>
+      <div class="toolbar"><button class="chip on" data-f="todas" onclick="filtEnt(this)">Todas</button><button class="chip" data-f="pago" onclick="filtEnt(this)">Pagas</button><button class="chip" data-f="vencer" onclick="filtEnt(this)">A vencer</button><input id="bEnt" placeholder="Buscar parcela..." oninput="fillEnt()" style="flex:1;min-width:150px"></div>
+      <div class="tbl-wrap"><table><thead><tr><th>Parcela</th><th>Vencimento</th><th class="num">Valor</th><th class="num">Pago</th><th class="num">Reajuste</th><th>Status</th></tr></thead><tbody id="tbEnt"></tbody></table></div></div>${sig()}`;
+  if(chE)chE.destroy();
+  const lab=d.map(e=>e.parcela);
+  chE=new Chart(document.getElementById('cEnt'),{data:{labels:lab,datasets:[
+    {type:'bar',label:'Previsto',data:d.map(e=>e.valor||0),backgroundColor:'#BBD2FA',borderRadius:3,maxBarThickness:14},
+    {type:'line',label:'Pago',data:d.map(e=>e.quitado?(e.pago||e.total):null),borderColor:'#1C64F0',backgroundColor:'#1C64F0',tension:.3,borderWidth:2,pointRadius:0,spanGaps:true}
+  ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{position:'bottom',labels:{usePointStyle:true,boxWidth:8,font:{family:'Inter'}}},tooltip:{callbacks:{label:c=>c.dataset.label+': '+fmtBRL2(c.parsed.y||0)}}},scales:{y:{ticks:{callback:x=>'R$'+x,font:{family:'Inter'}},grid:{color:'#EEF1F6'}},x:{grid:{display:false},ticks:{maxTicksLimit:20,font:{family:'Inter',size:10}}}}}});
+  fillEnt();
+}
+let entF='todas';
+function filtEnt(btn){entF=btn.dataset.f;document.querySelectorAll('[data-f]').forEach(b=>b.classList.toggle('on',b===btn));fillEnt();}
+function fillEnt(){
+  const q=(document.getElementById('bEnt').value||'').toLowerCase();
+  const rows=DADOS.entrada.filter(e=>{
+    if(entF==='pago'&&!e.quitado)return false;if(entF==='vencer'&&e.quitado)return false;
+    return String(e.parcela).toLowerCase().includes(q);});
+  document.getElementById('tbEnt').innerHTML=rows.map(e=>{
+    const cls=e.quitado?'pago':'vencer';const st=e.quitado?'PAGO':'A VENCER';
+    return `<tr><td><b>${e.parcela}</b></td><td>${dBR(e.venc)}</td><td class="num">${fmtBRL2(e.valor)}</td><td class="num">${e.quitado?fmtBRL2(e.pago||e.total):'—'}</td><td class="num">${e.reajuste?fmtBRL2(e.reajuste):'—'}</td><td><span class="badge ${cls}">${st}</span></td></tr>`;
+  }).join('')||'<tr><td colspan="6" style="color:var(--muted)">Nenhuma parcela.</td></tr>';
+}
+/* ---------- DOCUMENTAÇÃO ---------- */
+function renderDoc(v){
+  const a=aggDoc(),d=DADOS.doc;
+  const rtbi=d.reduce((s,x)=>s+(x.rtbi||0),0),cart=d.reduce((s,x)=>s+(x.cartorio||0),0);
+  v.innerHTML=`
+    <div class="kpis">
+      <div class="kpi green"><div class="lbl">Total pago</div><div class="val">${fmtBRL(a.pago)}</div><div class="hint">${a.nPagos} de ${a.n} parcelas</div></div>
+      <div class="kpi warnb"><div class="lbl">A vencer</div><div class="val">${fmtBRL(a.vencer)}</div><div class="hint">${a.nVencer} parcelas</div></div>
+      <div class="kpi"><div class="lbl">RTBI / Cartório</div><div class="val" style="font-size:1.2rem">${fmtBRL(rtbi)} / ${fmtBRL(cart)}</div><div class="hint">composição do custo</div></div>
+      <div class="kpi ink"><div class="lbl">Concluído</div><div class="val">${fmtPct(a.pct)}</div><div class="pbar"><i style="width:${(a.pct*100).toFixed(1)}%"></i></div></div>
+    </div>
+    <div class="card"><h2>Documentação — RTBI + Cartório</h2><div class="cap">Parcelas fixas de registro do imóvel (${a.n} no total).</div>
+      <div class="toolbar"><button class="chip on" data-fd="todas" onclick="filtDoc(this)">Todas</button><button class="chip" data-fd="pago" onclick="filtDoc(this)">Pagas</button><button class="chip" data-fd="vencer" onclick="filtDoc(this)">A vencer</button></div>
+      <div class="tbl-wrap"><table><thead><tr><th>Parcela</th><th class="num">RTBI</th><th class="num">Cartório</th><th class="num">Total</th><th>Status</th></tr></thead><tbody id="tbDoc"></tbody><tfoot><tr><th>Total geral</th><th class="num">${fmtBRL(rtbi)}</th><th class="num">${fmtBRL(cart)}</th><th class="num">${fmtBRL(rtbi+cart)}</th><th></th></tr></tfoot></table></div></div>${sig()}`;
+  fillDoc();
+}
+let docF='todas';
+function filtDoc(btn){docF=btn.dataset.fd;document.querySelectorAll('[data-fd]').forEach(b=>b.classList.toggle('on',b===btn));fillDoc();}
+function fillDoc(){
+  const rows=DADOS.doc.filter(e=>docF==='todas'||(docF==='pago'?e.quitado:!e.quitado));
+  document.getElementById('tbDoc').innerHTML=rows.map(e=>{
+    const cls=e.quitado?'pago':'vencer';const st=e.quitado?'PAGO':'A VENCER';
+    return `<tr><td><b>${e.parcela}</b></td><td class="num">${fmtBRL2(e.rtbi)}</td><td class="num">${fmtBRL2(e.cartorio)}</td><td class="num">${fmtBRL2(e.total)}</td><td><span class="badge ${cls}">${st}</span></td></tr>`;
+  }).join('')||'<tr><td colspan="5" style="color:var(--muted)">Nenhuma parcela.</td></tr>';
+}
+/* ---------- JUROS DE OBRA ---------- */
+function renderObra(v){
+  const a=aggObra(),d=DADOS.juros;
+  v.innerHTML=`
+    <div class="kpis">
+      <div class="kpi green"><div class="lbl">Total pago</div><div class="val">${fmtBRL(a.pago)}</div><div class="hint">${a.nPagos} parcelas</div></div>
+      <div class="kpi warnb"><div class="lbl">A vencer</div><div class="val">${fmtBRL(a.vencer)}</div><div class="hint">${a.nVencer} parcelas</div></div>
+      <div class="kpi" style="--blue:#5AA0FF"><div class="lbl">Evolução da obra</div><div class="val">${fmtPct(a.evolucao)}</div><div class="pbar"><i style="width:${(a.evolucao*100).toFixed(1)}%;background:#5AA0FF"></i></div></div>
+      <div class="kpi ink"><div class="lbl">Concluído (pago)</div><div class="val">${fmtPct(a.pct)}</div><div class="pbar"><i style="width:${(a.pct*100).toFixed(1)}%"></i></div></div>
+    </div>
+    <div class="card"><h2>Juros de obra × evolução da construção</h2><div class="cap">O juro de obra acompanha o avanço físico da obra. Barra = valor pago no mês · linha = % da obra concluída.</div><div class="chartbox tall"><canvas id="cObra"></canvas></div></div>
+    <div class="card"><h2>Detalhe mensal</h2>
+      <div class="tbl-wrap"><table><thead><tr><th>Parcela</th><th>Vencimento</th><th class="num">Valor</th><th class="num">Evolução obra</th><th>Status</th></tr></thead><tbody id="tbObra"></tbody></table></div></div>${sig()}`;
+  if(chO)chO.destroy();
+  chO=new Chart(document.getElementById('cObra'),{data:{labels:d.map(e=>e.parcela),datasets:[
+    {type:'bar',label:'Valor (R$)',data:d.map(e=>e.valor||0),backgroundColor:'#1C64F0',borderRadius:4,yAxisID:'y',maxBarThickness:22},
+    {type:'line',label:'Evolução da obra',data:d.map(e=>e.evolucao!=null?e.evolucao*100:null),borderColor:'#16A34A',backgroundColor:'#16A34A',tension:.3,borderWidth:2.5,pointRadius:0,yAxisID:'y1',spanGaps:true}
+  ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{position:'bottom',labels:{usePointStyle:true,boxWidth:8,font:{family:'Inter'}}},tooltip:{callbacks:{label:c=>c.dataset.yAxisID==='y'?c.dataset.label+': '+fmtBRL2(c.parsed.y):'Obra: '+c.parsed.y.toFixed(1)+'%'}}},scales:{y:{ticks:{callback:x=>'R$'+x,font:{family:'Inter'}},grid:{color:'#EEF1F6'}},y1:{position:'right',min:0,max:100,ticks:{callback:x=>x+'%',font:{family:'Inter'}},grid:{drawOnChartArea:false}},x:{grid:{display:false},ticks:{font:{family:'Inter'}}}}}});
+  document.getElementById('tbObra').innerHTML=d.map(e=>{
+    const cls=e.quitado?'pago':'vencer';const st=e.quitado?'PAGO':'A VENCER';
+    return `<tr><td><b>${e.parcela}</b></td><td>${dBR(e.venc)}</td><td class="num">${fmtBRL2(e.valor)}</td><td class="num">${e.evolucao!=null?fmtPct(e.evolucao):'—'}</td><td><span class="badge ${cls}">${st}</span></td></tr>`;
+  }).join('');
+}
+/* ---------- FINANCIAMENTO ---------- */
+function renderFin(v){
+  const fm=DADOS.finMeta,d=DADOS.fin;
+  const pagas=d.filter(x=>x.quitado).length,rest=d.length-pagas;
+  const totalContrato=d.reduce((s,x)=>s+(x.valor||0),0);
+  const jurosTotal=totalContrato-fm.saldoInicial;
+  v.innerHTML=`
+    <div class="kpis">
+      <div class="kpi red"><div class="lbl">Saldo devedor atual</div><div class="val">${fmtBRL(fm.saldoAtual)}</div><div class="hint">${rest} parcelas restantes</div></div>
+      <div class="kpi ink"><div class="lbl">Valor financiado</div><div class="val">${fmtBRL(fm.saldoInicial)}</div><div class="hint">SAC · ${d.length} parcelas</div></div>
+      <div class="kpi warnb"><div class="lbl">Juros do contrato</div><div class="val">${fmtBRL(jurosTotal)}</div><div class="hint">a ${(fm.jurosMensal*100).toFixed(2).replace('.',',')}% a.m. (≈${((Math.pow(1+fm.jurosMensal,12)-1)*100).toFixed(1).replace('.',',')}% a.a.)</div></div>
+      <div class="kpi green"><div class="lbl">Quitado</div><div class="val">${fmtPct(fm.pctQuitado)}</div><div class="pbar"><i style="width:${Math.max(1,fm.pctQuitado*100).toFixed(1)}%;background:#16A34A"></i></div></div>
+    </div>
+    <div class="insight">${svg('simulador')}<div>No sistema <b>SAC</b>, a parcela começa mais alta e cai ao longo do tempo, porque a amortização é fixa e os juros diminuem junto com o saldo. Um aporte mensal extra encurta muito o prazo — teste no <b>Simulador</b>.</div></div>
+    <div class="card"><h2>Evolução do saldo devedor</h2><div class="cap">Projeção da dívida ao banco até a quitação (${d[0]?dBR(d[0].mes):''} → ${d[d.length-1]?dBR(d[d.length-1].mes):''}).</div><div class="chartbox tall"><canvas id="cFin"></canvas></div></div>
+    <div class="card"><h2>Tabela de amortização</h2>
+      <div class="toolbar"><label>Mostrar:</label><select id="selFin" onchange="fillFin()"><option value="60">Primeiras 60</option><option value="120">Primeiras 120</option><option value="all">Todas (420)</option></select><input id="bFin" placeholder="Buscar nº parcela..." oninput="fillFin()" style="flex:1;min-width:150px"></div>
+      <div class="tbl-wrap"><table><thead><tr><th>Parcela</th><th>Mês</th><th class="num">Parcela (R$)</th><th class="num">Amortização</th><th class="num">Saldo devedor</th><th>Status</th></tr></thead><tbody id="tbFin"></tbody></table></div></div>${sig()}`;
+  if(chF)chF.destroy();
+  const samp=d.filter((_,i)=>i%6===0||i===d.length-1);
+  chF=new Chart(document.getElementById('cFin'),{type:'line',data:{labels:samp.map(e=>dBR(e.mes).slice(3)),datasets:[{label:'Saldo devedor',data:samp.map(e=>e.saldo||0),borderColor:'#DC2626',backgroundColor:'rgba(220,38,38,.08)',fill:true,tension:.3,pointRadius:0,borderWidth:2.5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+fmtBRL(c.parsed.y)}}},scales:{y:{ticks:{callback:x=>'R$ '+(x/1000).toFixed(0)+'k',font:{family:'Inter'}},grid:{color:'#EEF1F6'}},x:{grid:{display:false},ticks:{maxTicksLimit:14,font:{family:'Inter',size:10}}}}}});
+  fillFin();
+}
+function fillFin(){
+  const lim=document.getElementById('selFin').value;const q=(document.getElementById('bFin').value||'').trim();
+  let rows=DADOS.fin;
+  if(q)rows=rows.filter(e=>String(e.parcela).includes(q));
+  else if(lim!=='all')rows=rows.slice(0,+lim);
+  document.getElementById('tbFin').innerHTML=rows.map(e=>{
+    const cls=e.quitado?'pago':'vencer';const st=e.quitado?'PAGO':'A VENCER';
+    return `<tr><td><b>${e.parcela}</b></td><td>${dBR(e.mes)}</td><td class="num">${fmtBRL2(e.valor)}</td><td class="num">${fmtBRL2(e.amort)}</td><td class="num">${fmtBRL2(e.saldo)}</td><td><span class="badge ${cls}">${st}</span></td></tr>`;
+  }).join('')||'<tr><td colspan="6" style="color:var(--muted)">Nada encontrado.</td></tr>';
+}
+/* ---------- SIMULADOR ---------- */
+function simulate(saldo,taxa,parcela,aporteExtra,aporteUnico){
+  let s=saldo-(aporteUnico||0),juros=0,meses=0,desemb=(aporteUnico||0);
+  const pay=parcela+(aporteExtra||0);
+  if(pay<=s*taxa)return {meses:Infinity,juros:Infinity,desemb:Infinity}; // nunca amortiza
+  while(s>0.005&&meses<5000){
+    const j=s*taxa;juros+=j;
+    let principal=pay-j;
+    let realPay=pay;
+    if(principal>s){realPay=s+j;principal=s;}
+    s-=principal;desemb+=realPay;meses++;
+  }
+  return {meses,juros,desemb};
+}
+function renderSim(v){
+  const sm=DADOS.sim;
+  v.innerHTML=`
+    <div class="card"><h2>Simulador de amortização antecipada</h2><div class="cap">Edite os campos em azul. O modelo: parcela fixa mensal + juros sobre o saldo devedor (aproximação do contrato).</div>
+      <div class="simgrid">
+        <div class="simf"><label>Saldo devedor (R$)</label><input id="sSaldo" type="number" value="${sm.saldo}" oninput="runSim()"></div>
+        <div class="simf"><label>Juros mensal (%)</label><input id="sJuros" type="number" step="0.01" value="${(sm.juros*100).toFixed(2)}" oninput="runSim()"></div>
+        <div class="simf"><label>Parcela base (R$)</label><input id="sParc" type="number" value="${sm.parcela}" oninput="runSim()"></div>
+        <div class="simf"><label>Aporte extra mensal (R$)</label><input id="sExtra" type="number" value="${sm.aporteExtra}" oninput="runSim()"></div>
+        <div class="simf"><label>Aporte único agora (R$)</label><input id="sUnico" type="number" value="${sm.aporteUnico}" oninput="runSim()"></div>
+      </div>
+    </div>
+    <div class="simres" id="simRes"></div>
+    <div class="card"><h2>Saldo devedor: sem aporte × com aporte</h2><div class="cap">Veja em quanto tempo a dívida zera nos dois cenários.</div><div class="chartbox tall"><canvas id="cSim"></canvas></div></div>${sig()}`;
+  runSim();
+}
+function runSim(){
+  const saldo=+document.getElementById('sSaldo').value||0;
+  const taxa=(+document.getElementById('sJuros').value||0)/100;
+  const parc=+document.getElementById('sParc').value||0;
+  const extra=+document.getElementById('sExtra').value||0;
+  const unico=+document.getElementById('sUnico').value||0;
+  const base=simulate(saldo,taxa,parc,0,0);
+  const sim=simulate(saldo,taxa,parc,extra,unico);
+  const okBase=isFinite(base.meses),okSim=isFinite(sim.meses);
+  const ecoMeses=okBase&&okSim?base.meses-sim.meses:0;
+  const ecoJuros=okBase&&okSim?base.juros-sim.juros:0;
+  const fa=v=>isFinite(v)?v:'∞';
+  document.getElementById('simRes').innerHTML=`
+    <div class="rc"><div class="l">Sem aporte</div><div class="v">${fa(base.meses)} <span style="font-size:.8rem;font-weight:600;color:var(--muted)">meses</span></div><div class="hint" style="font-size:.74rem;color:var(--muted)">Juros: ${okBase?fmtBRL(base.juros):'—'}</div></div>
+    <div class="rc"><div class="l">Com aporte</div><div class="v">${fa(sim.meses)} <span style="font-size:.8rem;font-weight:600;color:var(--muted)">meses</span></div><div class="hint" style="font-size:.74rem;color:var(--muted)">Juros: ${okSim?fmtBRL(sim.juros):'—'}</div></div>
+    <div class="rc eco"><div class="l">Você economiza</div><div class="v">${fmtBRL(ecoJuros)}</div><div class="hint" style="font-size:.74rem;color:#7DE3AE">${ecoMeses>0?'− '+ecoMeses+' meses ('+(ecoMeses/12).toFixed(1).replace('.',',')+' anos)':'—'}</div></div>`;
+  // curvas de saldo
+  function curve(extraV,unicoV){let s=saldo-(unicoV||0),pts=[s],i=0;const pay=parc+(extraV||0);while(s>0.005&&i<5000){const j=s*taxa;let pr=pay-j;if(pr<=0)break;if(pr>s)pr=s;s-=pr;pts.push(Math.max(0,s));i++;}return pts;}
+  const cb=curve(0,0),cs=curve(extra,unico);
+  const maxLen=Math.max(cb.length,cs.length);
+  const labels=Array.from({length:maxLen},(_,i)=>i);
+  if(chS)chS.destroy();
+  chS=new Chart(document.getElementById('cSim'),{type:'line',data:{labels,datasets:[
+    {label:'Sem aporte',data:cb,borderColor:'#98A2B3',backgroundColor:'rgba(152,162,179,.08)',fill:false,tension:.2,pointRadius:0,borderWidth:2},
+    {label:'Com aporte',data:cs,borderColor:'#1C64F0',backgroundColor:'rgba(28,100,240,.10)',fill:true,tension:.2,pointRadius:0,borderWidth:2.5}
+  ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{position:'bottom',labels:{usePointStyle:true,boxWidth:8,font:{family:'Inter'}}},tooltip:{callbacks:{title:c=>'Mês '+c[0].label,label:c=>c.dataset.label+': '+fmtBRL(c.parsed.y)}}},scales:{y:{ticks:{callback:x=>'R$ '+(x/1000).toFixed(0)+'k',font:{family:'Inter'}},grid:{color:'#EEF1F6'},min:0},x:{grid:{display:false},title:{display:true,text:'meses',font:{family:'Inter',size:10}},ticks:{maxTicksLimit:14,font:{family:'Inter',size:10}}}}}});
+}
+
+if(SESSION)startApp();
+</script>
+<script src="app-crud.js"></script>
+</body>
+</html>
