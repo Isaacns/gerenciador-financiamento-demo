@@ -121,6 +121,7 @@ function gerar(id){
     DADOS.entrada=out;
   }
   recompute();
+  if(window.VZSUPA) window.VZSUPA.replaceModule(id, rows(id));
   toast(out.length+" parcela(s) gerada(s). Marque as pagas para abater do total.","ok");
   manage(id);
 }
@@ -129,6 +130,7 @@ function gerar(id){
 function apiPost(p){ if(!API_URL)return Promise.resolve({offline:true}); return fetch(API_URL,{method:"POST",mode:"no-cors",body:JSON.stringify(p)}).then(function(){return {ok:true};}).catch(function(){return {erro:true};}); }
 function toRec(id,e){ var o={}; SCHEMAS[id].fields.forEach(function(f){ if(f.k==="quitado")o.quitado=e.quitado?"Sim":"Não"; else if(f.k==="status")o.status=e.quitado?"PAGO":"A VENCER"; else o[f.k]=e[f.k]; }); return o; }
 function persist(id,action,e,idx,silent){
+  if(window.VZSUPA){ window.VZSUPA.persist(id,action,e||{}); if(!silent)toast("Salvo na nuvem.","ok"); return Promise.resolve({ok:true}); }
   return apiPost({modulo:id,acao:action,registro:toRec(id,e||{}),indice:idx}).then(function(res){
     if(silent)return res;
     if(res.offline)toast("Salvo nesta sessão. Conecte o Google Sheets para gravar de verdade.","warn");
@@ -246,7 +248,7 @@ function readCfg(id){
   else { c.forma=g("cf_forma")||"parcelado"; c.nParc=parseInt(g("cf_nparc"))||0; if(id==="entrada"){c.tipo=g("cf_tipo")||"fixa";c.taxa=parseFloat(g("cf_taxa"))||0;} else c.tipo="fixa"; }
   return c;
 }
-function saveCfg(id){ readCfg(id); recompute(); toast("Configuração salva.","ok"); manage(id); }
+function saveCfg(id){ readCfg(id); recompute(); if(window.VZSUPA) window.VZSUPA.saveCfg(id,cfg(id)); toast("Configuração salva.","ok"); manage(id); }
 function cfgForma(id){ var f=document.getElementById("cf_forma"),n=document.getElementById("cf_nparc"); if(f&&n){n.disabled=(f.value==="avista");} }
 
 /* ---------- gerenciar dados ---------- */
