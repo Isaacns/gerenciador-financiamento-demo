@@ -6,6 +6,13 @@
 <title>Gerenciador de Financiamento · VIZIO</title>
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
 <link rel="apple-touch-icon" href="favicon-180.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1C64F0">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Financiamento">
+<script>if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -178,6 +185,19 @@ body.home .topbar .user button.out{border-color:#283149;color:#8A93A8}
 </head>
 <body>
 
+<button id="pwaInstall" class="hidden" style="position:fixed;right:16px;bottom:16px;z-index:300;background:#1C64F0;color:#fff;border:none;border-radius:10px;padding:12px 16px;font-weight:700;font-size:.9rem;box-shadow:0 8px 24px rgba(0,0,0,.3);cursor:pointer;font-family:inherit">⬇ Instalar app</button>
+<script>
+(function(){
+  var dp=null;
+  window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();dp=e;var b=document.getElementById('pwaInstall');if(b)b.classList.remove('hidden');});
+  window.addEventListener('appinstalled',function(){var b=document.getElementById('pwaInstall');if(b)b.classList.add('hidden');dp=null;});
+  document.addEventListener('DOMContentLoaded',function(){
+    var b=document.getElementById('pwaInstall');
+    if(b)b.addEventListener('click',function(){if(!dp)return;dp.prompt();dp.userChoice.then(function(){dp=null;b.classList.add('hidden');});});
+  });
+})();
+</script>
+
 <div id="login">
   <form class="login-card" onsubmit="return doLogin(event)">
     <div class="lg"><img class="sym" src="vizio-symbol-dark.png" alt="VIZIO"><img class="wm" src="vizio-wordmark-dark.png" alt="VIZIO"></div>
@@ -188,7 +208,7 @@ body.home .topbar .user button.out{border-color:#283149;color:#8A93A8}
     <div class="field"><label>Senha</label><input id="p" type="password" autocomplete="current-password"></div>
     <button class="btn-primary" type="submit">Entrar</button>
     <div class="login-hint" id="lgHint">Acesso de demonstração:<br><b>sarah</b> / <b>sarah</b> — proprietária<br><b>admin</b> / <b>admin</b> — gestor (Isaac)</div>
-    <div class="login-tag">Sua planilha virou software. · um produto INPERSON</div>
+    <div class="login-tag"><img src="vizio-symbol-dark.png" alt="VIZIO" style="height:13px;vertical-align:-2px;opacity:.65;margin-right:5px">Sua planilha virou software. · um produto INPERSON</div>
   </form>
 </div>
 
@@ -265,6 +285,7 @@ function jsonp(url,cb){
   });
 }
 function setSession(s){
+  if(s&&s.isAdmin===undefined)s.isAdmin=(s.perfil==='admin');
   SESSION=s;
   try{sessionStorage.setItem('vizio_fin_sess',JSON.stringify(SESSION));}catch(e){}
   startApp();
@@ -312,19 +333,22 @@ const MODS=[
   {id:'doc',nome:'Documentação',sub:'RTBI + Cartório',grp:'Etapas de pagamento',roles:['admin','proprietario'],ready:true,desc:'Custos de registro e cartório.'},
   {id:'obra',nome:'Juros de Obra',sub:'Evolução da obra',grp:'Etapas de pagamento',roles:['admin','proprietario'],ready:true,desc:'Juros de obra e avanço da construção.'},
   {id:'financiamento',nome:'Financiamento',sub:'SAC · 420 parcelas',grp:'Etapas de pagamento',roles:['admin','proprietario'],ready:true,desc:'Saldo devedor e amortização do banco.'},
-  {id:'simulador',nome:'Simulador',sub:'Amortização antecipada',grp:'Ferramentas',roles:['admin','proprietario'],ready:true,desc:'Simule aportes e veja a economia de juros.'}
+  {id:'simulador',nome:'Simulador',sub:'Amortização antecipada',grp:'Ferramentas',roles:['admin','proprietario'],ready:true,desc:'Simule aportes e veja a economia de juros.'},
+  {id:'assinatura',nome:'Assinatura',sub:'Plano e pagamento',grp:'Conta',roles:['admin','proprietario'],ready:true,desc:'Sua assinatura e pagamento.'},
+  {id:'clientes',nome:'Clientes',sub:'Contratantes',grp:'Administração',roles:['admin'],adminOnly:true,ready:true,desc:'Lista e estado das contas dos clientes (somente admins).'},
+  {id:'configurador',nome:'Configurador',sub:'Nova instância',grp:'Administração',roles:['admin'],adminOnly:true,ready:true,desc:'Gere a configuração de um novo comprador (somente admins).'}
 ];
 const fmtBRL=n=>'R$ '+(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 const fmtBRL2=n=>'R$ '+(n||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 const fmtN=n=>Math.round(n||0).toLocaleString('pt-BR');
 const fmtPct=n=>(n*100).toFixed(1).replace('.',',')+'%';
 const dBR=s=>{if(!s||s==='—')return '—';const p=String(s).split('-');return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:s;};
-function can(m){return m.roles.includes(SESSION.perfil);}
+function can(m){return m.adminOnly ? !!(SESSION&&SESSION.isAdmin) : m.roles.includes(SESSION.perfil);}
 
 /* ---- agregações derivadas dos arrays ---- */
-function aggEntrada(){const d=DADOS.entrada;let pago=0,vencer=0,prev=0,nPagos=0,nVencer=0;
-  d.forEach(e=>{const v=e.valor||0;prev+=v;if(e.quitado){pago+=(e.pago||e.total||v);nPagos++;}else{vencer+=v;nVencer++;}});
-  return {pago,vencer,prev,nPagos,nVencer,n:d.length,pct:pago/(pago+vencer||1)};}
+function aggEntrada(){const d=DADOS.entrada;let pago=0,vencer=0,prev=0,nPagos=0,nVencer=0,reaj=0;
+  d.forEach(e=>{const v=e.valor||0;prev+=v;if(e.quitado){pago+=(e.pago||e.total||v);nPagos++;reaj+=(Number(e.reajuste)||0);}else{vencer+=v;nVencer++;}});
+  return {pago,vencer,prev,nPagos,nVencer,reaj,n:d.length,pct:pago/(pago+vencer||1)};}
 function aggDoc(){const d=DADOS.doc;let pago=0,vencer=0,nPagos=0,nVencer=0;
   d.forEach(e=>{const v=e.total||0;if(e.quitado){pago+=v;nPagos++;}else{vencer+=v;nVencer++;}});
   return {pago,vencer,nPagos,nVencer,n:d.length,pct:pago/(pago+vencer||1)};}
@@ -357,7 +381,7 @@ function navigate(id){
   document.getElementById('crumb').childNodes[0].nodeValue=m.nome;
   document.getElementById('crumbSub').textContent=m.sub||'';
   const v=document.getElementById('view');
-  ({home:renderHome,visao:renderVisao,entrada:renderEntrada,doc:renderDoc,obra:renderObra,financiamento:renderFin,simulador:renderSim}[id]||renderHome)(v);
+  ({home:renderHome,visao:renderVisao,entrada:renderEntrada,doc:renderDoc,obra:renderObra,financiamento:renderFin,simulador:renderSim,configurador:renderConfigurador,clientes:renderClientes,assinatura:renderAssinatura}[id]||renderHome)(v);
   window.scrollTo(0,0);
 }
 function sig(){return `<div class="sig"><div class="by"><b>Gerenciador de Financiamento</b> <span>by</span> <img class="sym" src="vizio-symbol-dark.png"> <img class="wm" src="vizio-wordmark-dark.png"> · Sua planilha virou software.</div><span>Dados: ${DADOS._meta.fonte} · ${DADOS._meta.gerado}</span></div>`;}
@@ -376,8 +400,84 @@ function kvOf(id){const r=DADOS.resumo;
   if(id==='doc'){const a=aggDoc();return `<b>${fmtBRL(a.pago)}</b> pagos · ${fmtPct(a.pct)}`;}
   if(id==='obra'){const a=aggObra();return `obra <b>${fmtPct(a.evolucao)}</b> · ${fmtPct(a.pct)} pago`;}
   if(id==='financiamento')return `Saldo <b>${fmtBRL(DADOS.finMeta.saldoAtual)}</b> · 420x`;
-  if(id==='simulador')return `Economize até <b>${fmtBRL(DADOS.sim.jurosBase-DADOS.sim.jurosSim)}</b>`;
+  if(id==='simulador'){const b=simBase();if(b.saldo<=0||b.parcela<=0)return 'Sem financiamento ativo';const s0=simulate(b.saldo,b.juros,b.parcela,0,0),s1=simulate(b.saldo,b.juros,b.parcela,b.aporteExtra,0);const eco=(isFinite(s0.juros)&&isFinite(s1.juros))?(s0.juros-s1.juros):0;return `Economize até <b>${fmtBRL(eco>0?eco:0)}</b>`;}
   return '';
+}
+var _CLI=[];
+function renderClientes(v){
+  document.body.classList.remove('home');
+  v.innerHTML='<div class="card"><h2>Clientes</h2><div class="cap">Contratantes do sistema (somente admin). Atualize para ver o estado de cada conta.</div>'+
+    '<div style="margin:0 0 12px"><button class="chip on" onclick="carregarClientes()">Atualizar</button></div>'+
+    '<div id="clientesBox" style="font-size:.9rem;color:#667085">Carregando...</div></div>'+sig();
+  carregarClientes();
+}
+function _cliFetch(payload){
+  var cfg=DADOS._cfg||{};
+  if(!window.SUPA||!cfg.supabaseUrl) return Promise.reject(new Error('Disponivel apenas no modo nuvem (Supabase).'));
+  return window.SUPA.auth.getSession().then(function(s){
+    var token=s&&s.data&&s.data.session?s.data.session.access_token:null;
+    if(!token) throw new Error('Sessao expirada.');
+    return fetch(cfg.supabaseUrl.replace(/\/+$/,'')+'/functions/v1/admin-clients',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token,'apikey':cfg.supabaseKey||''},body:JSON.stringify(payload)}).then(function(r){return r.json();});
+  });
+}
+function carregarClientes(){
+  var box=document.getElementById('clientesBox'); if(box)box.textContent='Carregando...';
+  _cliFetch({action:'list'}).then(function(res){
+    var b=document.getElementById('clientesBox'); if(!b)return;
+    if(!res.ok){ b.innerHTML='<span style="color:#DC2626">Erro: '+(res.error||'falha')+'</span>'; return; }
+    _CLI=res.clients||[];
+    if(!_CLI.length){ b.innerHTML='Nenhum cliente ainda.'; return; }
+    var rows=_CLI.map(function(c,i){ var et=c.counts||{};
+      var st=c.is_admin?'<span class="badge pago">admin</span>':(c.confirmed?'<span class="badge pago">ativo</span>':'<span class="badge vencer">pendente</span>');
+      return '<tr><td><b>'+(c.nome||'-')+'</b><div style="font-size:.76rem;color:#667085">'+(c.email||'')+'</div></td><td>'+(c.instancia||'-')+'</td><td class="num">'+(et.entrada||0)+' / '+(et.doc||0)+' / '+(et.obra||0)+' / '+(et.fin||0)+'</td><td class="num">'+fmtBRL(c.investido||0)+'</td><td>'+st+'</td><td><button class="chip" onclick="reenviarConvite('+i+')">Reenviar convite</button></td></tr>';
+    }).join('');
+    b.innerHTML='<div class="tbl-wrap"><table><thead><tr><th>Cliente</th><th>Imovel</th><th class="num">Parcelas E/D/O/F</th><th class="num">Investido</th><th>Status</th><th>Acoes</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+  }).catch(function(e){ var b=document.getElementById('clientesBox'); if(b)b.innerHTML='<span style="color:#DC2626">'+e.message+'</span>'; });
+}
+function reenviarConvite(i){
+  var c=_CLI[i]; if(!c||!c.email){alert('Sem e-mail para este cliente.');return;}
+  if(!confirm('Reenviar convite/e-mail para '+c.email+'?'))return;
+  _cliFetch({action:'invite',email:c.email,appUrl:location.href.split('#')[0]}).then(function(res){
+    alert(res.ok?('Convite/e-mail reenviado para '+c.email):('Erro: '+(res.error||'falha')));
+  }).catch(function(e){ alert(e.message); });
+}
+function renderAssinatura(v){
+  document.body.classList.remove('home');
+  var cfg=DADOS._cfg||{};
+  var email=(window.SESSION&&SESSION.user)||(typeof SESSION!=='undefined'&&SESSION?SESSION.user:'')||'';
+  v.innerHTML='<div class="card"><h2>Assinatura</h2><div class="cap">Plano e status de pagamento da sua conta.</div><div id="assBox" style="font-size:.92rem;color:#667085">Carregando...</div></div>'+sig();
+  function render(row){
+    var st=(row&&row.status)||'none', badge,msg;
+    if(st==='active'||st==='trialing'){badge='<span class="badge pago">Assinatura ativa</span>';msg='Sua assinatura está ativa. Obrigado por usar o Gerenciador!';}
+    else if(st==='past_due'){badge='<span class="badge vencer">Pagamento pendente</span>';msg='Há um pagamento pendente. Regularize para manter o acesso.';}
+    else if(st==='canceled'){badge='<span class="badge vencer">Cancelada</span>';msg='Sua assinatura foi cancelada. Você pode assinar novamente quando quiser.';}
+    else {badge='<span class="badge vencer">Sem assinatura</span>';msg='Você ainda não tem uma assinatura ativa.';}
+    var btn;
+    if(st==='active'||st==='trialing'){
+      btn='<div style="margin-top:12px;font-weight:700;color:#16A34A;font-size:.92rem">Assinatura ativa ✓</div>';
+    } else if(window.assinar){
+      var label=(st==='past_due')?'Regularizar pagamento':'Assinar agora — R$ 49,90/mês';
+      btn='<button type="button" onclick="window.assinar({btn:this})" style="display:inline-block;border:0;cursor:pointer;margin-top:12px;background:#1C64F0;color:#fff;font-weight:700;padding:11px 18px;border-radius:9px;font-size:.92rem">'+label+'</button>';
+    } else {
+      btn='<div style="color:#98A2B3;margin-top:10px;font-size:.84rem">Assinatura disponível apenas no modo nuvem.</div>';
+    }
+    var box=document.getElementById('assBox'); if(!box)return;
+    box.innerHTML='<div style="margin-bottom:10px">'+badge+'</div>'+
+      '<div style="background:#F7F9FC;border:1px solid #E4E8EF;border-radius:12px;padding:18px 20px;max-width:420px">'+
+      '<div style="font-size:.8rem;text-transform:uppercase;letter-spacing:.04em;color:#667085;font-weight:700">Plano mensal</div>'+
+      '<div style="font-size:1.7rem;font-weight:800;color:#1C64F0;margin:2px 0">R$ 49,90<span style="font-size:.9rem;color:#667085;font-weight:600"> /mês</span></div>'+
+      '<p style="font-size:.86rem;color:#475467;margin:8px 0 0">'+msg+'</p>'+btn+'</div>';
+  }
+  if(window.SUPA){ window.SUPA.from('fin_assinaturas').select('*').maybeSingle().then(function(r){render(r&&r.data);}).catch(function(){render(null);}); }
+  else { render(null); }
+}
+function renderConfigurador(v){
+  document.body.classList.remove('home');
+  v.innerHTML='<div class="card" style="padding:14px 16px">'+
+    '<h2 style="margin:0 0 4px">Configurador de instância</h2>'+
+    '<div class="cap" style="font-size:.82rem;color:#667085;margin-bottom:12px">Gere a configuração de um novo comprador. Área exclusiva de administradores.</div>'+
+    '<iframe src="configurador.html" title="Configurador" style="width:100%;height:78vh;border:0;border-radius:12px;background:#0C0F18"></iframe>'+
+  '</div>';
 }
 function renderHome(v){
   const r=DADOS.resumo,fm=DADOS.finMeta;
@@ -388,7 +488,7 @@ function renderHome(v){
     doc:[DADOS.doc.map(e=>e.total||0),'bar'],
     obra:[DADOS.juros.map(e=>e.valor||0),'bar'],
     financiamento:[DADOS.fin.filter((_,i)=>i%24===0).map(e=>e.saldo||0),'line'],
-    simulador:[[DADOS.sim.mesesBase,DADOS.sim.mesesSim],'bar']
+    simulador:[(function(){const b=simBase();if(b.saldo<=0||b.parcela<=0)return [0,0];const s0=simulate(b.saldo,b.juros,b.parcela,0,0),s1=simulate(b.saldo,b.juros,b.parcela,b.aporteExtra,0);return [isFinite(s0.meses)?s0.meses:0,isFinite(s1.meses)?s1.meses:0];})(),'bar']
   };
   let cards='';
   MODS.filter(m=>m.id!=='home'&&can(m)).forEach(m=>{
@@ -459,13 +559,14 @@ function renderEntrada(v){
     <div class="kpis">
       <div class="kpi green"><div class="lbl">Total pago</div><div class="val">${fmtBRL(a.pago)}</div><div class="hint">${a.nPagos} parcelas quitadas</div></div>
       <div class="kpi warnb"><div class="lbl">A vencer</div><div class="val">${fmtBRL(a.vencer)}</div><div class="hint">${a.nVencer} parcelas restantes</div></div>
+      <div class="kpi"><div class="lbl">Reajuste acumulado</div><div class="val">${fmtBRL(a.reaj)}</div><div class="hint">correção paga (pago − previsto)</div></div>
       <div class="kpi ink"><div class="lbl">Total previsto</div><div class="val">${fmtBRL(a.pago+a.vencer)}</div><div class="hint">entrada completa</div></div>
       <div class="kpi"><div class="lbl">Concluído</div><div class="val">${fmtPct(a.pct)}</div><div class="pbar"><i style="width:${(a.pct*100).toFixed(1)}%"></i></div></div>
     </div>
-    <div class="card"><h2>Parcelas da entrada</h2><div class="cap">Valor previsto (barra) e valor efetivamente pago com reajuste (linha).</div><div class="chartbox tall"><canvas id="cEnt"></canvas></div></div>
+    <div class="card"><h2>Parcelas da entrada</h2><div class="cap">Valor previsto (barra) e valor efetivamente pago/corrigido (linha). O reajuste é a diferença pago − previsto, calculada automaticamente.</div><div class="chartbox tall"><canvas id="cEnt"></canvas></div></div>
     <div class="card"><h2>Detalhe das parcelas</h2>
       <div class="toolbar"><button class="chip on" data-f="todas" onclick="filtEnt(this)">Todas</button><button class="chip" data-f="pago" onclick="filtEnt(this)">Pagas</button><button class="chip" data-f="vencer" onclick="filtEnt(this)">A vencer</button><input id="bEnt" placeholder="Buscar parcela..." oninput="fillEnt()" style="flex:1;min-width:150px"></div>
-      <div class="tbl-wrap"><table><thead><tr><th>Parcela</th><th>Vencimento</th><th class="num">Valor</th><th class="num">Pago</th><th class="num">Reajuste</th><th>Status</th></tr></thead><tbody id="tbEnt"></tbody></table></div></div>${sig()}`;
+      <div class="tbl-wrap"><table><thead><tr><th>Parcela</th><th>Vencimento</th><th class="num">Valor</th><th class="num">Pago (corrigido)</th><th class="num">Reajuste</th><th>Status</th></tr></thead><tbody id="tbEnt"></tbody></table></div></div>${sig()}`;
   if(chE)chE.destroy();
   const lab=d.map(e=>e.parcela);
   chE=new Chart(document.getElementById('cEnt'),{data:{labels:lab,datasets:[
@@ -483,7 +584,7 @@ function fillEnt(){
     return String(e.parcela).toLowerCase().includes(q);});
   document.getElementById('tbEnt').innerHTML=rows.map(e=>{
     const cls=e.quitado?'pago':'vencer';const st=e.quitado?'PAGO':'A VENCER';
-    return `<tr><td><b>${e.parcela}</b></td><td>${dBR(e.venc)}</td><td class="num">${fmtBRL2(e.valor)}</td><td class="num">${e.quitado?fmtBRL2(e.pago||e.total):'—'}</td><td class="num">${e.reajuste?fmtBRL2(e.reajuste):'—'}</td><td><span class="badge ${cls}">${st}</span></td></tr>`;
+    return `<tr><td><b>${e.parcela}</b></td><td>${dBR(e.venc)}</td><td class="num">${fmtBRL2(e.valor)}</td><td class="num">${e.quitado?fmtBRL2(e.pago||e.total):'—'}</td><td class="num">${e.reajuste!=null?fmtBRL2(e.reajuste):(e.quitado?'R$ 0,00':'—')}</td><td><span class="badge ${cls}">${st}</span></td></tr>`;
   }).join('')||'<tr><td colspan="6" style="color:var(--muted)">Nenhuma parcela.</td></tr>';
 }
 /* ---------- DOCUMENTAÇÃO ---------- */
@@ -538,6 +639,7 @@ function renderObra(v){
 function renderFin(v){
   const fm=DADOS.finMeta,d=DADOS.fin;
   const pagas=d.filter(x=>x.quitado).length,rest=d.length-pagas;
+  const reajFin=d.filter(x=>x.quitado).reduce((s,x)=>s+(Number(x.reajuste)||0),0);
   const totalContrato=d.reduce((s,x)=>s+(x.valor||0),0);
   const jurosTotal=totalContrato-fm.saldoInicial;
   v.innerHTML=`
@@ -546,12 +648,13 @@ function renderFin(v){
       <div class="kpi ink"><div class="lbl">Valor financiado</div><div class="val">${fmtBRL(fm.saldoInicial)}</div><div class="hint">SAC · ${d.length} parcelas</div></div>
       <div class="kpi warnb"><div class="lbl">Juros do contrato</div><div class="val">${fmtBRL(jurosTotal)}</div><div class="hint">a ${(fm.jurosMensal*100).toFixed(2).replace('.',',')}% a.m. (≈${((Math.pow(1+fm.jurosMensal,12)-1)*100).toFixed(1).replace('.',',')}% a.a.)</div></div>
       <div class="kpi green"><div class="lbl">Quitado</div><div class="val">${fmtPct(fm.pctQuitado)}</div><div class="pbar"><i style="width:${Math.max(1,fm.pctQuitado*100).toFixed(1)}%;background:#16A34A"></i></div></div>
+      <div class="kpi"><div class="lbl">Diferença acumulada</div><div class="val">${fmtBRL(reajFin)}</div><div class="hint">pago − previsto (reajuste)</div></div>
     </div>
     <div class="insight">${svg('simulador')}<div>No sistema <b>SAC</b>, a parcela começa mais alta e cai ao longo do tempo, porque a amortização é fixa e os juros diminuem junto com o saldo. Um aporte mensal extra encurta muito o prazo — teste no <b>Simulador</b>.</div></div>
     <div class="card"><h2>Evolução do saldo devedor</h2><div class="cap">Projeção da dívida ao banco até a quitação (${d[0]?dBR(d[0].mes):''} → ${d[d.length-1]?dBR(d[d.length-1].mes):''}).</div><div class="chartbox tall"><canvas id="cFin"></canvas></div></div>
     <div class="card"><h2>Tabela de amortização</h2>
       <div class="toolbar"><label>Mostrar:</label><select id="selFin" onchange="fillFin()"><option value="60">Primeiras 60</option><option value="120">Primeiras 120</option><option value="all">Todas (420)</option></select><input id="bFin" placeholder="Buscar nº parcela..." oninput="fillFin()" style="flex:1;min-width:150px"></div>
-      <div class="tbl-wrap"><table><thead><tr><th>Parcela</th><th>Mês</th><th class="num">Parcela (R$)</th><th class="num">Amortização</th><th class="num">Saldo devedor</th><th>Status</th></tr></thead><tbody id="tbFin"></tbody></table></div></div>${sig()}`;
+      <div class="tbl-wrap"><table><thead><tr><th>Parcela</th><th>Mês</th><th class="num">Parcela (devida)</th><th class="num">Pago</th><th class="num">Diferença</th><th class="num">Amortização</th><th class="num">Saldo devedor</th><th>Status</th></tr></thead><tbody id="tbFin"></tbody></table></div></div>${sig()}`;
   if(chF)chF.destroy();
   const samp=d.filter((_,i)=>i%6===0||i===d.length-1);
   chF=new Chart(document.getElementById('cFin'),{type:'line',data:{labels:samp.map(e=>dBR(e.mes).slice(3)),datasets:[{label:'Saldo devedor',data:samp.map(e=>e.saldo||0),borderColor:'#DC2626',backgroundColor:'rgba(220,38,38,.08)',fill:true,tension:.3,pointRadius:0,borderWidth:2.5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+fmtBRL(c.parsed.y)}}},scales:{y:{ticks:{callback:x=>'R$ '+(x/1000).toFixed(0)+'k',font:{family:'Inter'}},grid:{color:'#EEF1F6'}},x:{grid:{display:false},ticks:{maxTicksLimit:14,font:{family:'Inter',size:10}}}}}});
@@ -564,13 +667,14 @@ function fillFin(){
   else if(lim!=='all')rows=rows.slice(0,+lim);
   document.getElementById('tbFin').innerHTML=rows.map(e=>{
     const cls=e.quitado?'pago':'vencer';const st=e.quitado?'PAGO':'A VENCER';
-    return `<tr><td><b>${e.parcela}</b></td><td>${dBR(e.mes)}</td><td class="num">${fmtBRL2(e.valor)}</td><td class="num">${fmtBRL2(e.amort)}</td><td class="num">${fmtBRL2(e.saldo)}</td><td><span class="badge ${cls}">${st}</span></td></tr>`;
-  }).join('')||'<tr><td colspan="6" style="color:var(--muted)">Nada encontrado.</td></tr>';
+    return `<tr><td><b>${e.parcela}</b></td><td>${dBR(e.mes)}</td><td class="num">${fmtBRL2(e.valor)}</td><td class="num">${e.quitado?fmtBRL2(e.pago!=null?e.pago:e.valor):'—'}</td><td class="num">${e.reajuste!=null?fmtBRL2(e.reajuste):(e.quitado?'R$ 0,00':'—')}</td><td class="num">${fmtBRL2(e.amort)}</td><td class="num">${fmtBRL2(e.saldo)}</td><td><span class="badge ${cls}">${st}</span></td></tr>`;
+  }).join('')||'<tr><td colspan="8" style="color:var(--muted)">Nada encontrado.</td></tr>';
 }
 /* ---------- SIMULADOR ---------- */
 function simulate(saldo,taxa,parcela,aporteExtra,aporteUnico){
   let s=saldo-(aporteUnico||0),juros=0,meses=0,desemb=(aporteUnico||0);
   const pay=parcela+(aporteExtra||0);
+  if(s<=0.005)return {meses:0,juros:0,desemb:0}; // sem divida
   if(pay<=s*taxa)return {meses:Infinity,juros:Infinity,desemb:Infinity}; // nunca amortiza
   while(s>0.005&&meses<5000){
     const j=s*taxa;juros+=j;
@@ -581,10 +685,20 @@ function simulate(saldo,taxa,parcela,aporteExtra,aporteUnico){
   }
   return {meses,juros,desemb};
 }
+function simBase(){
+  var fm=DADOS.finMeta||{}, fin=DADOS.fin||[];
+  var saldo=Number(fm.saldoAtual!=null?fm.saldoAtual:(fm.saldoInicial||0))||0;
+  var juros=Number(fm.jurosMensal||0)||0;
+  var u=fin.find(function(e){return !e.quitado;});
+  var parc=Number((u&&u.valor)||(fin[0]&&fin[0].valor)||0)||0;
+  var aporte=parc>0?Math.round(parc*0.15/10)*10:0;
+  return {saldo:saldo,juros:juros,parcela:parc,aporteExtra:aporte,aporteUnico:0};
+}
 function renderSim(v){
-  const sm=DADOS.sim;
+  const sm=simBase();
   v.innerHTML=`
     <div class="card"><h2>Simulador de amortização antecipada</h2><div class="cap">Edite os campos em azul. O modelo: parcela fixa mensal + juros sobre o saldo devedor (aproximação do contrato).</div>
+      <div class="simmode" style="display:flex;gap:18px;margin:8px 0 6px;font-size:.86rem;color:var(--text);align-items:center"><b style="font-weight:700;color:var(--muted)">Modo:</b> <label style="cursor:pointer;display:inline-flex;gap:5px;align-items:center"><input type="radio" name="simModo" value="prazo" checked onchange="runSim()"> Reduzir prazo</label> <label style="cursor:pointer;display:inline-flex;gap:5px;align-items:center"><input type="radio" name="simModo" value="parcela" onchange="runSim()"> Reduzir parcela</label></div>
       <div class="simgrid">
         <div class="simf"><label>Saldo devedor (R$)</label><input id="sSaldo" type="number" value="${sm.saldo}" oninput="runSim()"></div>
         <div class="simf"><label>Juros mensal (%)</label><input id="sJuros" type="number" step="0.01" value="${(sm.juros*100).toFixed(2)}" oninput="runSim()"></div>
@@ -603,25 +717,42 @@ function runSim(){
   const parc=+document.getElementById('sParc').value||0;
   const extra=+document.getElementById('sExtra').value||0;
   const unico=+document.getElementById('sUnico').value||0;
-  const base=simulate(saldo,taxa,parc,0,0);
-  const sim=simulate(saldo,taxa,parc,extra,unico);
-  const okBase=isFinite(base.meses),okSim=isFinite(sim.meses);
-  const ecoMeses=okBase&&okSim?base.meses-sim.meses:0;
-  const ecoJuros=okBase&&okSim?base.juros-sim.juros:0;
+  const me=document.querySelector('input[name="simModo"]:checked');
+  const modo=me?me.value:'prazo';
+  const _exf=document.getElementById('sExtra'); if(_exf){var _exc=_exf.closest('.simf'); if(_exc)_exc.style.display=(modo==='parcela')?'none':'';}
   const fa=v=>isFinite(v)?v:'∞';
-  document.getElementById('simRes').innerHTML=`
+  const base=simulate(saldo,taxa,parc,0,0);
+  let cs;
+  if(modo==='parcela'){
+    const term=(isFinite(base.meses)&&base.meses>0)?base.meses:0;
+    const novoSaldo=Math.max(0,saldo-unico);
+    let novaParc=0; if(term>0){ novaParc = taxa>0 ? novoSaldo*taxa/(1-Math.pow(1+taxa,-term)) : novoSaldo/term; }
+    const ecoMes=parc-novaParc;
+    document.getElementById('simRes').innerHTML=`
+    <div class="rc"><div class="l">Parcela atual</div><div class="v">${fmtBRL(parc)}</div><div class="hint" style="font-size:.74rem;color:var(--muted)">Prazo: ${fa(base.meses)} meses</div></div>
+    <div class="rc"><div class="l">Nova parcela</div><div class="v">${fmtBRL(novaParc)}</div><div class="hint" style="font-size:.74rem;color:var(--muted)">Mesmo prazo (${fa(term)} meses)</div></div>
+    <div class="rc eco"><div class="l">Você reduz por mês</div><div class="v">${fmtBRL(ecoMes>0?ecoMes:0)}</div><div class="hint" style="font-size:.74rem;color:#7DE3AE">${ecoMes>0?'Total no prazo: '+fmtBRL(ecoMes*term):'—'}</div></div>`;
+    cs=curve(novaParc,unico);
+  } else {
+    const sim=simulate(saldo,taxa,parc,extra,unico);
+    const okBase=isFinite(base.meses),okSim=isFinite(sim.meses);
+    const ecoMeses=okBase&&okSim?base.meses-sim.meses:0;
+    const ecoJuros=okBase&&okSim?base.juros-sim.juros:0;
+    document.getElementById('simRes').innerHTML=`
     <div class="rc"><div class="l">Sem aporte</div><div class="v">${fa(base.meses)} <span style="font-size:.8rem;font-weight:600;color:var(--muted)">meses</span></div><div class="hint" style="font-size:.74rem;color:var(--muted)">Juros: ${okBase?fmtBRL(base.juros):'—'}</div></div>
     <div class="rc"><div class="l">Com aporte</div><div class="v">${fa(sim.meses)} <span style="font-size:.8rem;font-weight:600;color:var(--muted)">meses</span></div><div class="hint" style="font-size:.74rem;color:var(--muted)">Juros: ${okSim?fmtBRL(sim.juros):'—'}</div></div>
     <div class="rc eco"><div class="l">Você economiza</div><div class="v">${fmtBRL(ecoJuros)}</div><div class="hint" style="font-size:.74rem;color:#7DE3AE">${ecoMeses>0?'− '+ecoMeses+' meses ('+(ecoMeses/12).toFixed(1).replace('.',',')+' anos)':'—'}</div></div>`;
-  // curvas de saldo
-  function curve(extraV,unicoV){let s=saldo-(unicoV||0),pts=[s],i=0;const pay=parc+(extraV||0);while(s>0.005&&i<5000){const j=s*taxa;let pr=pay-j;if(pr<=0)break;if(pr>s)pr=s;s-=pr;pts.push(Math.max(0,s));i++;}return pts;}
-  const cb=curve(0,0),cs=curve(extra,unico);
+    cs=curve(parc+extra,unico);
+  }
+  function curve(pay,unicoV){let s=saldo-(unicoV||0),pts=[s],i=0;while(s>0.005&&i<5000){const j=s*taxa;let pr=pay-j;if(pr<=0)break;if(pr>s)pr=s;s-=pr;pts.push(Math.max(0,s));i++;}return pts;}
+  const cb=curve(parc,0);
+  if(!cs)cs=curve(parc+extra,unico);
   const maxLen=Math.max(cb.length,cs.length);
   const labels=Array.from({length:maxLen},(_,i)=>i);
   if(chS)chS.destroy();
   chS=new Chart(document.getElementById('cSim'),{type:'line',data:{labels,datasets:[
-    {label:'Sem aporte',data:cb,borderColor:'#98A2B3',backgroundColor:'rgba(152,162,179,.08)',fill:false,tension:.2,pointRadius:0,borderWidth:2},
-    {label:'Com aporte',data:cs,borderColor:'#1C64F0',backgroundColor:'rgba(28,100,240,.10)',fill:true,tension:.2,pointRadius:0,borderWidth:2.5}
+    {label:(modo==='parcela'?'Atual':'Sem aporte'),data:cb,borderColor:'#98A2B3',backgroundColor:'rgba(152,162,179,.08)',fill:false,tension:.2,pointRadius:0,borderWidth:2},
+    {label:(modo==='parcela'?'Com nova parcela':'Com aporte'),data:cs,borderColor:'#1C64F0',backgroundColor:'rgba(28,100,240,.10)',fill:true,tension:.2,pointRadius:0,borderWidth:2.5}
   ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{position:'bottom',labels:{usePointStyle:true,boxWidth:8,font:{family:'Inter'}}},tooltip:{callbacks:{title:c=>'Mês '+c[0].label,label:c=>c.dataset.label+': '+fmtBRL(c.parsed.y)}}},scales:{y:{ticks:{callback:x=>'R$ '+(x/1000).toFixed(0)+'k',font:{family:'Inter'}},grid:{color:'#EEF1F6'},min:0},x:{grid:{display:false},title:{display:true,text:'meses',font:{family:'Inter',size:10}},ticks:{maxTicksLimit:14,font:{family:'Inter',size:10}}}}}});
 }
 
@@ -629,5 +760,29 @@ if(SESSION)startApp();
 </script>
 <script src="app-crud.js"></script>
 <script src="supabase-mode.js"></script>
+<!-- INPERSON/VIZIO · mostrar-ocultar senha (cobre campos dinamicos) -->
+<style>
+.pw-wrap{position:relative;display:block}
+.pw-wrap > input{padding-right:42px !important}
+.pw-eye{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:0;cursor:pointer;font-size:16px;line-height:1;opacity:.65;padding:4px}
+.pw-eye:hover{opacity:1}
+</style>
+<script>
+(function(){
+  function enhance(inp){
+    if(!inp||inp.dataset.pwEnhanced||inp.type!=='password'||!inp.parentNode) return;
+    inp.dataset.pwEnhanced='1';
+    var w=document.createElement('span');w.className='pw-wrap';
+    inp.parentNode.insertBefore(w,inp);w.appendChild(inp);
+    var b=document.createElement('button');b.type='button';b.className='pw-eye';
+    b.setAttribute('aria-label','Mostrar senha');b.textContent='👁';
+    b.addEventListener('click',function(){var h=inp.type==='password';inp.type=h?'text':'password';b.textContent=h?'🙈':'👁';b.setAttribute('aria-label',h?'Ocultar senha':'Mostrar senha');inp.focus();});
+    w.appendChild(b);
+  }
+  function scan(r){(r||document).querySelectorAll&&(r||document).querySelectorAll('input[type=password]').forEach(enhance);}
+  if(document.readyState!=='loading')scan();else document.addEventListener('DOMContentLoaded',function(){scan();});
+  new MutationObserver(function(ms){ms.forEach(function(m){m.addedNodes&&m.addedNodes.forEach(function(n){if(n.nodeType===1){if(n.matches&&n.matches('input[type=password]'))enhance(n);scan(n);}});});}).observe(document.documentElement,{childList:true,subtree:true});
+})();
+</script>
 </body>
 </html>
